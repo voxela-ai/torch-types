@@ -1,10 +1,26 @@
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from enum import IntEnum
-from typing import Dict, Generic, Iterator, List, MutableMapping, Optional, OrderedDict, Sequence, Tuple, Type, TypeVar, Union
+from typing import (
+    Dict,
+    Generic,
+    Iterator,
+    List,
+    MutableMapping,
+    Optional,
+    OrderedDict,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 import torch
+
+
+IntEnumT = TypeVar("IntEnumT", bound=IntEnum)
 
 
 def _to_numpy(x: Union[Sequence, np.ndarray, torch.Tensor]) -> np.ndarray:
@@ -17,7 +33,6 @@ def _to_numpy(x: Union[Sequence, np.ndarray, torch.Tensor]) -> np.ndarray:
 
 
 class Field(metaclass=ABCMeta):
-
     @staticmethod
     @abstractmethod
     def collate_fn(batch: List["Field"]) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
@@ -25,7 +40,6 @@ class Field(metaclass=ABCMeta):
 
 
 class ArrayField(Field):
-
     def __init__(self, value: Union[np.ndarray, torch.Tensor]) -> None:
         super().__init__()
 
@@ -35,9 +49,6 @@ class ArrayField(Field):
     @staticmethod
     def collate_fn(batch: List["ArrayField"]) -> torch.Tensor:
         return torch.stack([torch.from_numpy(x.value) for x in batch], dim=0)
-
-
-IntEnumT = TypeVar("IntEnumT", bound=IntEnum)
 
 
 class ClassificationField(Field, Generic[IntEnumT]):
