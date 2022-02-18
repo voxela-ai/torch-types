@@ -159,3 +159,20 @@ class BBoxField(Field):
         assert len(nboxes) == 1
         bboxes = bboxes.reshape(nboxes[0], 4)
         return cls(bboxes=bboxes)
+
+
+class StringField(Field):
+    def __init__(self, value: str) -> None:
+        super().__init__()
+        self.value = value
+
+    @staticmethod
+    def collate_fn(batch: List["StringField"]) -> List[str]:
+        return [b.value for b in batch]
+
+    def to_dict(self) -> dict:
+        return {"value": self.value.encode("utf-8")}
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "StringField":
+        return cls(data["value"].decode("utf-8"))
