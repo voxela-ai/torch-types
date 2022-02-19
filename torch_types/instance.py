@@ -4,14 +4,10 @@ from typing import (
     Iterator,
     List,
     MutableMapping,
-    Optional,
     OrderedDict,
-    Tuple,
     Type,
-    Union,
 )
 
-import numpy as np
 import torch
 
 from torch_types.fields import Field
@@ -74,6 +70,15 @@ class Instance(MutableMapping[str, Field]):
 
     def __len__(self) -> int:
         return len(self._data)
+
+    def replace(self, **kwargs) -> "Instance":
+        cls = type(self)
+        dct = self.to_dict()
+        for name, field in kwargs:
+            assert name in cls.field_types
+            assert isinstance(field, Field)
+            dct[name] = field.to_dict()
+        return cls.from_dict(dct)
 
     @classmethod
     def collate_fn(cls, batch: List["Instance"]) -> Dict[str, torch.Tensor]:
