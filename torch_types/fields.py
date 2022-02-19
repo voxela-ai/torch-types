@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from enum import IntEnum
-from typing import Dict, Generic, List, Optional, Sequence, Type, TypeVar, Union
+from typing import Dict, Generic, List, Optional, Sequence, Tuple, Type, TypeVar, Union
 
 import numpy as np
 import torch
@@ -114,25 +114,41 @@ class ClassificationField(Field, Generic[IntEnumT]):
 
 
 class BBoxField(Field):
-    def __init__(self, bboxes: Union[None, np.ndarray, torch.Tensor]) -> None:
+    BBoxInputT = Union[None, np.ndarray, torch.Tensor]
+
+    def __init__(
+        self,
+        /,
+        shape: Tuple[int, int, int],
+        xywh: BBoxInputT = None,
+        xyxy: BBoxInputT = None,
+    ) -> None:
+        assert (xywh is not None) and (xyxy is not None), "Specify only _one_ of xywh or xyxy"
         super().__init__()
-        if bboxes is None:
+        
+        H, W, _ = shape
+        if xywh is None and xyxy is None:
             bboxes = np.empty((0, 4))
+        elif xyxy:
+            bboxes = BBoxField.xyxy2xywh(xyxy)
+        else:
+            bboxes = xywh
         bboxes = _to_numpy(bboxes)
         if bboxes.ndim == 1:
             bboxes = np.expand_dims(bboxes, 0)
 
         assert isinstance(bboxes, np.ndarray)
         assert bboxes.shape[-1] == 4
-        self.bboxes = bboxes.astype(np.float32)
+        self.xywh = bboxes.astype(np.float32) / np.array([W, H, W, H])
+        self.shape = np.array(shape).astype(np.int64)
 
     @staticmethod
     def collate_fn(batch: List["BBoxField"]) -> Dict[str, torch.Tensor]:
         bboxes = []
         batch_idx = []
         for i, b in enumerate(batch):
-            bboxes.extend(torch.from_numpy(b.bboxes))
-            batch_idx.extend([i] * b.bboxes.shape[0])
+            bboxes.extend(torch.from_numpy(b.xywh))
+            batch_idx.extend([i] * b.xywh.shape[0])
 
         if bboxes:
             bbox_tensor = torch.stack(bboxes, dim=0)
@@ -142,23 +158,37 @@ class BBoxField(Field):
             idx_tensor = torch.empty((0, 4))
 
         return {
-            "bboxes": bbox_tensor,
+            "xywh": bbox_tensor,
             "batch_idx": idx_tensor,
         }
 
     def to_dict(self) -> dict:
         return {
-            "bboxes": self.bboxes.flatten(),
-            "nboxes": np.array([self.bboxes.shape[0]], dtype=np.int64),
+            "xywh": self.xywh.flatten(),
+            "nboxes": np.array([self.xywh.shape[0]], dtype=np.int64),
+            "shape": self.shape,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "BBoxField":
-        bboxes, nboxes = data["bboxes"], data["nboxes"]
+        bboxes, nboxes, shape = data["xywh"], data["nboxes"], data["shape"]
         assert isinstance(bboxes, np.ndarray)
         assert len(nboxes) == 1
         bboxes = bboxes.reshape(nboxes[0], 4)
-        return cls(bboxes=bboxes)
+        return cls(shape=shape, xywh=bboxes)
+
+    @staticmethod
+    def xyxy2xywh(xyxy: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+        if isinstance(xyxy, np.ndarray):
+            x1, y1, x2, y2 = np.split(xyxy, 4, axis=-1)
+        else:
+            x1, y1, x2, y2 = torch.split(xyxy, 1, dim=-1)
+        w = x2 - x1
+        h = y2 - y1
+        if isinstance(xyxy, np.ndarray):
+            return np.concatenate((x1, y1, w, h), axis=-1)
+        else:
+            return torch.cat((x1, y1, w, h), dim=-1)
 
 
 class StringField(Field):
