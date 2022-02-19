@@ -67,17 +67,13 @@ class Instance(MutableMapping[str, Field]):
     def __delitem__(self, key: str) -> None:
         del self._data[key]
 
-    def __iter__(self) -> Iterator[Optional[Field]]:
+    def __iter__(self) -> Iterator[str]:
         for key in type(self).field_types:
-            yield self._data.get(key, None)
+            if key in self._data:
+                yield key
 
     def __len__(self) -> int:
         return len(self._data)
-
-    def items(self) -> Iterator[Tuple[str, Field]]:
-        for key in type(self).field_types:
-            if key in self._data:
-                yield key, self._data[key]
 
     @classmethod
     def collate_fn(cls, batch: List["Instance"]) -> Dict[str, torch.Tensor]:
