@@ -114,10 +114,15 @@ class Instance(MutableMapping[str, Field]):
     def from_dict(cls, data: dict) -> "Instance":
         res = defaultdict(dict)
         for key, val in data.items():
-            name, attr_name = key.split(".")
-            if name not in cls.field_types:
-                raise ValueError(f"Key not in {cls}: {name}")
-            res[name][attr_name] = val
+            names = key.split(".", 1)
+            if names[0] not in cls.field_types:
+                raise ValueError(f"Key not in {cls}: {names[0]}")
+            if names == 1:
+                name = names[0]
+                res[name] = val
+            else:
+                name, attr_name = names
+                res[name][attr_name] = val
 
         fields = {}
         for name in res:
