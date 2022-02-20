@@ -126,13 +126,13 @@ class BBoxField(Field):
         xywh: BBoxInputT = None,
         xyxy: BBoxInputT = None,
     ) -> None:
-        assert (xywh is not None) and (xyxy is not None), "Specify only _one_ of xywh or xyxy"
+        assert not (xywh is not None and xyxy is not None), "Specify only _one_ of xywh or xyxy"
         super().__init__()
         
         H, W, _ = shape
         if xywh is None and xyxy is None:
             bboxes = np.empty((0, 4))
-        elif xyxy:
+        elif xyxy is not None:
             bboxes = _to_numpy(xyxy)
             bboxes = BBoxField.xyxy2xywh(xyxy)
         else:

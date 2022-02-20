@@ -74,7 +74,7 @@ class Instance(MutableMapping[str, Field]):
     def replace(self, **kwargs) -> "Instance":
         cls = type(self)
         dct = self.to_dict()
-        for name, field in kwargs:
+        for name, field in kwargs.items():
             assert name in cls.field_types
             assert isinstance(field, Field)
             dct[name] = field.to_dict()
