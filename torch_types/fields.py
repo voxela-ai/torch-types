@@ -51,7 +51,7 @@ class ArrayField(Field):
 
     @staticmethod
     def collate_fn(batch: List["ArrayField"]) -> torch.Tensor:
-        return torch.stack([torch.from_numpy(x.value) for x in batch], dim=0)
+        return torch.stack([torch.from_numpy(x.value.copy()) for x in batch], dim=0)
 
     def to_dict(self) -> dict:
         return {
@@ -138,18 +138,30 @@ class BBoxField(Field):
         else:
             bboxes = _to_numpy(xywh)
 
+        if bboxes.size == 0:
+            bboxes = np.empty((0, 4))
         if bboxes.ndim == 1:
             bboxes = np.expand_dims(bboxes, 0)
 
         assert isinstance(bboxes, np.ndarray)
         assert bboxes.shape[-1] == 4
-        self.xywh = bboxes.astype(np.float32) / np.array([W, H, W, H])
+        self.xywhn = bboxes.astype(np.float32) / np.array([W, H, W, H])
         self.shape = np.array(shape).astype(np.int64)
+
+    @property
+    def xyxyn(self) -> np.ndarray:
+        x, y, w, h = np.split(self.xywhn, 4, axis=-1)
+        return np.concatenate((x, y, x + w, y + h), axis=-1)
 
     @property
     def xyxy(self) -> np.ndarray:
         x, y, w, h = np.split(self.xywh, 4, axis=-1)
         return np.concatenate((x, y, x + w, y + h), axis=-1)
+
+    @property
+    def xywh(self) -> np.ndarray:
+        H, W, _ = self.shape
+        return self.xywhn * np.array([W, H, W, H])
 
     @staticmethod
     def xyxy2xywh(xyxy: np.ndarray) -> np.ndarray:
@@ -164,14 +176,14 @@ class BBoxField(Field):
         batch_idx = []
         for i, b in enumerate(batch):
             bboxes.extend(torch.from_numpy(b.xywh))
-            batch_idx.extend([i] * b.xywh.shape[0])
+            batch_idx.extend([torch.tensor(i)] * b.xywh.shape[0])
 
         if bboxes:
             bbox_tensor = torch.stack(bboxes, dim=0)
             idx_tensor = torch.stack(batch_idx, dim=0)
         else:
             bbox_tensor = torch.empty((0, 4))
-            idx_tensor = torch.empty((0, 4))
+            idx_tensor = torch.empty(0)
 
         return {
             "xywh": bbox_tensor,

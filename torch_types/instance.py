@@ -117,7 +117,7 @@ class Instance(MutableMapping[str, Field]):
             names = key.split(".", 1)
             if names[0] not in cls.field_types:
                 raise ValueError(f"Key not in {cls}: {names[0]}")
-            if names == 1:
+            if len(names) == 1:
                 name = names[0]
                 res[name] = val
             else:
