@@ -1,14 +1,15 @@
 from abc import ABCMeta, abstractmethod
 from enum import IntEnum
-from typing import Dict, Generic, List, Optional, Sequence, Tuple, Type, TypeVar, Union
+from typing import Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 import numpy as np
 import torch
 
+T = TypeVar("T")
 IntEnumT = TypeVar("IntEnumT", bound=IntEnum)
 
 
-def _to_numpy(x: Union[Sequence, np.ndarray, torch.Tensor]) -> np.ndarray:
+def _to_numpy(x) -> np.ndarray:
     if isinstance(x, torch.Tensor):
         return x.detach().cpu().numpy()
     elif isinstance(x, np.ndarray):
@@ -36,10 +37,35 @@ class Field(metaclass=ABCMeta):
         ...
 
 
+class _NumberField(Generic[T], Field):
+    Type: Type[T]
+    value: T
+
+    def __init__(self, value) -> None:
+        self.value = type(self).Type(value)
+
+    @staticmethod
+    def collate_fn(batch: List["_NumberField"]) -> torch.Tensor:
+        return torch.from_numpy(np.array([x.value for x in batch]))
+
+    def to_dict(self) -> dict:
+        return {"value": self.value}
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        value = data["value"]
+        return cls(value)
+
+
+class Int64Field(_NumberField):
+    Type = np.int64
+
+
+class Float32Field(_NumberField):
+    Type = np.float32
+
+
 class ArrayField(Field):
-    value: np.ndarray
-    shape: np.ndarray
-    dtype: str
 
     def __init__(self, value: Union[np.ndarray, torch.Tensor]) -> None:
         super().__init__()

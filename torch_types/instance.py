@@ -1,11 +1,13 @@
 from collections import defaultdict
 from typing import (
     Dict,
+    Generic,
     Iterator,
     List,
     MutableMapping,
     OrderedDict,
     Type,
+    TypeVar,
 )
 
 import torch
@@ -13,7 +15,10 @@ import torch
 from torch_types.fields import Field
 
 
-class Instance(MutableMapping[str, Field]):
+I = TypeVar("I", bound="Instance")
+
+
+class Instance(Generic[I], MutableMapping[str, Field]):
 
     __annotations__: OrderedDict[str, Type[Field]] = OrderedDict()
     field_types = __annotations__
@@ -71,7 +76,7 @@ class Instance(MutableMapping[str, Field]):
     def __len__(self) -> int:
         return len(self._data)
 
-    def replace(self, **kwargs) -> "Instance":
+    def replace(self: I, **kwargs) -> I:
         cls = type(self)
         dct = self.to_dict()
         for name, field in kwargs.items():
