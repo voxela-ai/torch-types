@@ -36,10 +36,10 @@ class TFRecordWriter(_TFRecordWriter, BaseWriter):
             val = data[key]
             if isinstance(val, bytes):
                 dtype_str = "byte"
-            elif isinstance(val, np.ndarray):
-                if val.dtype is np.dtype("<f4"):
+            elif isinstance(val, (np.ndarray, np.integer, np.floating)):
+                if val.dtype.char in ("f", "d"):
                     dtype_str = "float"
-                elif val.dtype is np.dtype("<i8"):
+                elif val.dtype.char in ("i", "l"):
                     dtype_str = "int"
                 else:
                     raise ValueError(f"Unsupported dtype {val.dtype} for key {key}")
