@@ -102,11 +102,11 @@ class Instance(Generic[I], MutableMapping[str, Field]):
         for key, val in batch_map.items():
             typ_ = type_map[key]
             collated_field = typ_.collate_fn(val)
-            if isinstance(collated_field, torch.Tensor):
-                res[key] = collated_field
-            elif isinstance(collated_field, dict):
+            if isinstance(collated_field, dict):
                 for sub_key, sub_val in collated_field.items():
                     res[f"{key}.{sub_key}"] = sub_val
+            else:
+                res[key] = collated_field
         return res
 
     def to_dict(self) -> dict:
